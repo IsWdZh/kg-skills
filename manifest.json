@@ -1,0 +1,23 @@
+{
+  "name": "kg-skills",
+  "version": "1.1.0",
+  "schema_version": "2026-06-11",
+  "skills": [
+    "kg-pipeline",
+    "kg-intake",
+    "kg-tagging",
+    "kg-scenario-map",
+    "kg-govern-config",
+    "kg-produce",
+    "kg-coordinate",
+    "kg-package",
+    "kg-serve"
+  ],
+  "storage_contract": {
+    "governance_source": "Markdown",
+    "release_source": "immutable versioned Markdown snapshot with SHA-256",
+    "exchange": "JSONL",
+    "projections": ["SQLite", "Neo4j Cypher", "PostgreSQL/pgvector optional"]
+  },
+  "python": ">=3.9"
+}
