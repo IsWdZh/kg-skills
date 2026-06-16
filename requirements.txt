@@ -1,0 +1,26 @@
+# 知识治理技能包（kg-skills）依赖
+# 安装（建议清华镜像）：
+#   pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+#
+# 说明：嵌入模型（bge-small-zh-v1.5，91MB）已随 kg-package/scripts/_models 内置，
+# 无需联网下载；rapidocr 的 OCR 模型亦随包内置。换机器仅需装下列 Python 库。
+
+# 文档解析（kg-normalize / kg-intake）
+beautifulsoup4
+lxml
+python-docx
+pypdf
+Pillow
+
+# 图片 OCR（kg-normalize，离线，模型内置）
+rapidocr-onnxruntime
+
+# 嵌入/向量化（kg-package 投影、kg-serve 检索）
+fastembed
+
+# 服务态数据库投影（kg-package）
+psycopg2-binary
+nebula3-python
+
+# 可选：可视化工作台（演示前端）
+flask

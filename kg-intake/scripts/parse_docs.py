@@ -133,6 +133,91 @@ def extract_pdf(path: Path) -> list[str]:
     return blocks
 
 
+def parse_front_matter(text: str):
+    m = re.match(r"^---\n(.*?)\n---\n?", text, re.S)
+    meta, body = {}, text
+    if m:
+        for line in m.group(1).split("\n"):
+            if ":" in line:
+                k, v = line.split(":", 1)
+                meta[k.strip()] = v.strip()
+        body = text[m.end():]
+    return meta, body
+
+
+def _write_registry(ws: Path, registry):
+    reg_dir = ws / "00-文档台账"
+    reg_dir.mkdir(parents=True, exist_ok=True)
+    out = io.StringIO()
+    out.write("# 文档台账\n\n")
+    out.write(f"共登记 {len(registry)} 份文档。状态说明：`已接入`=登记并解析完成，待打标。\n\n")
+    out.write("| 编号 | 标题 | 适用地区 | 文档类型 | 发布时间 | 格式 | 段落数 | 字数 | 完整性 | 去重 | 源文件 |\n")
+    out.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
+    for r in registry:
+        out.write("| " + " | ".join(str(x) for x in r) + " |\n")
+    (reg_dir / "台账.md").write_text(out.getvalue(), encoding="utf-8")
+    print(f"\n台账已写入 {reg_dir / '台账.md'}")
+
+
+def main_from_md(ws: Path):
+    """从 00-原始MD（kg-normalize 归一产物）解析为带锚点结构化文档 + 台账。"""
+    registry, hash_seen = [], {}
+    batch_id = f"INTAKE-{date.today().isoformat()}"
+    src_root = ws / "00-原始MD"
+    if not src_root.exists():
+        print("未找到 00-原始MD/，请先运行 to_markdown.py 完成格式归一（kg-normalize 环节）")
+        return
+    parsed_root = ws / "10-解析文档"
+    for code_dir in sorted(p for p in src_root.iterdir() if p.is_dir() and p.name != "_图片"):
+        code = code_dir.name
+        out_dir = parsed_root / code
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for f in sorted(code_dir.glob("*.md")):
+            meta, body = parse_front_matter(f.read_text(encoding="utf-8"))
+            doc_id = meta.get("编号", f.stem)
+            title = meta.get("标题", doc_id)
+            pub = meta.get("发布时间", "未知")
+            未转写 = "待视觉转写" in meta.get("归一状态", "")
+            paras = []
+            for line in body.split("\n"):
+                s = line.strip()
+                if not s or s.startswith("# "):
+                    continue
+                paras.append(re.sub(r"^>\s*", "", s))
+            full = "".join(paras)
+            h = hashlib.sha256(re.sub(r"\s+", "", full).encode()).hexdigest()
+            dup = hash_seen.get(h, "")
+            if not dup:
+                hash_seen[h] = doc_id
+            dtype = detect_doc_type(title)
+            chars = len(re.sub(r"\s+", "", full))
+            comp = []
+            if 未转写:
+                comp.append("图片型-未转写（需回 kg-normalize 补全）")
+            else:
+                if pub == "未知":
+                    comp.append("缺发布时间")
+                if chars < 100:
+                    comp.append("正文过短")
+            comp = "；".join(comp) if comp else "完整"
+            lines = ["---", f"编号: {doc_id}", f"标题: {title}",
+                     f"地区: {meta.get('地区','')}", f"发布机构: {meta.get('发布机构','')}",
+                     f"文档类型: {dtype}", f"发布时间: {pub}", "生效时间: 未知",
+                     f"源文件: {meta.get('源文件','')}", f"内容哈希: {h}",
+                     "内容哈希算法: sha256-normalized-v1", f"接入批次: {batch_id}",
+                     f"接入时间: {date.today().isoformat()}", "来源URL: 未知",
+                     "权限范围: 公开", "责任人: 未指定", f"完整性: {comp}",
+                     "上游: 00-原始MD（格式归一产物）", "---", "", f"# {title}", ""]
+            for i, p in enumerate(paras, 1):
+                lines.append(f"[p{i:03d}] {p}")
+            (out_dir / f"{doc_id}.md").write_text("\n".join(lines), encoding="utf-8")
+            registry.append((doc_id, title, meta.get("地区", ""), dtype, pub,
+                             meta.get("原始格式", ""), len(paras), chars, comp,
+                             f"重复于{dup}" if dup else "唯一", meta.get("源文件", "")))
+            print(f"{doc_id}  {comp:<16} {len(paras):>3}段 {chars:>6}字  {title[:26]}")
+    _write_registry(ws, registry)
+
+
 def main(src_root: Path, ws: Path):
     registry, hash_seen = [], {}
     batch_id = f"INTAKE-{date.today().isoformat()}"
@@ -212,18 +297,16 @@ def main(src_root: Path, ws: Path):
                              len(blocks), chars, comp, f"重复于{dup}" if dup else "唯一", f.name))
             print(f"{doc_id}  {comp:<6} {len(blocks):>3}段 {chars:>6}字  {title[:30]}")
 
-    reg_dir = ws / "00-文档台账"
-    reg_dir.mkdir(parents=True, exist_ok=True)
-    out = io.StringIO()
-    out.write("# 文档台账\n\n")
-    out.write(f"共登记 {len(registry)} 份文档。状态说明：`已接入`=登记并解析完成，待打标。\n\n")
-    out.write("| 编号 | 标题 | 适用地区 | 文档类型 | 发布时间 | 格式 | 段落数 | 字数 | 完整性 | 去重 | 源文件 |\n")
-    out.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
-    for r in registry:
-        out.write("| " + " | ".join(str(x) for x in r) + " |\n")
-    (reg_dir / "台账.md").write_text(out.getvalue(), encoding="utf-8")
-    print(f"\n台账已写入 {reg_dir / '台账.md'}")
+    _write_registry(ws, registry)
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), Path(sys.argv[2]))
+    # 推荐流程：先 kg-normalize 出 00-原始MD，再 --from-md 做结构化解析
+    #   python parse_docs.py --from-md <工作区目录>
+    # 兼容旧流程（直接从原始文件解析）：
+    #   python parse_docs.py <源文档根目录> <工作区目录>
+    if "--from-md" in sys.argv:
+        pos = [a for a in sys.argv[1:] if not a.startswith("--")]
+        main_from_md(Path(pos[0]))
+    else:
+        main(Path(sys.argv[1]), Path(sys.argv[2]))

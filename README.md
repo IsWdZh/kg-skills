@@ -7,6 +7,7 @@
 | 技能 | 职责 | 阶段产物 |
 |---|---|---|
 | `kg-pipeline` | 总控：判断当前阶段、调度技能、维护工作区规范 | 治理工作区目录 |
+| `kg-normalize` | 格式归一（第 0 环节）：原始异构文件统一转 md 原料 | 00-原始MD/、转换清单 |
 | `kg-intake` | 文档接入：登记/解析/去重/图片型文档视觉转写 | 文档台账、解析文档（带锚点） |
 | `kg-tagging` | 业务打标：词表先行、文档级+段落级打标 | 词表、打标结果、待确认清单 |
 | `kg-scenario-map` | 全局业务图与单元场景：人工边界→LLM候选→人工确认 | 场景目录、业务图、地区版本映射、覆盖盘点 |
@@ -18,7 +19,9 @@
 
 ## 安装
 
-**Claude Code**：把本目录下 9 个技能文件夹复制到项目 `.claude/skills/`（或全局 `~/.claude/skills/`），对话中说"用 kg-pipeline 开始治理 XX 文档"即可。
+**Claude Code**：把本目录下 10 个技能文件夹复制到项目 `.claude/skills/`（或全局 `~/.claude/skills/`），对话中说"用 kg-pipeline 开始治理 XX 文档"即可。
+
+> **拷贝即用**：嵌入模型（bge-small-zh-v1.5，91MB）与 OCR 模型已内置在 `kg-package/scripts/_models`，随技能一起分发——脚本会优先从脚本旁的内置模型离线加载，**复制 `.claude` 到任何新位置即可用，无需联网下载模型**。换机器时仅需装 Python 依赖：`pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt`（同机同环境则已装齐）。外部数据库（PostgreSQL/pgvector/NebulaGraph）连接配置写在脚本顶部，连同一服务器无需改动。
 
 **其他 Agent**：技能全部为纯 Markdown 指令 + 可选 Python 脚本。接入解析按文档格式可能需要 `beautifulsoup4`、`python-docx`、`pypdf`、`Pillow`；校验、冻结、导出使用 Python 标准库。无 Skills 机制的环境，可把对应 SKILL.md 作为系统指令使用。
 
@@ -27,7 +30,7 @@
 ```
 1. 准备源文档文件夹（按来源/地区分子目录）
 2. 触发 kg-pipeline → 创建治理工作区 + 数据规范
-3. 依序执行 kg-intake → kg-tagging → kg-scenario-map → kg-govern-config
+3. 依序执行 kg-normalize（统一转 md）→ kg-intake → kg-tagging → kg-scenario-map → kg-govern-config
 4. 对选定场景执行 kg-produce → kg-coordinate → kg-package（冻结版本并生成服务投影）
 5. 用 kg-serve 对外提供问答（或把知识包目录交给任意 RAG/Agent 消费）
 ```

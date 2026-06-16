@@ -10,7 +10,7 @@
 - 使用独立数据库 kg_gjj_trial，不触碰服务器上既有库（ai/nacos/ontology_db）；
 - 表名列名全中文；编码/ID 保留 ASCII。
 """
-import sys, json, os
+import sys, json, os, re
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -19,6 +19,14 @@ PG = dict(host="192.168.108.155", port=5432, user="pgsql", password="Jczh@2026")
 DB_NAME = "kg_gjj_trial"
 EMBED_MODEL = "BAAI/bge-small-zh-v1.5"   # 512 维
 EMBED_DIM = 512
+
+
+def resolve_models_dir(ws):
+    """优先用脚本旁内置的嵌入模型缓存（随技能分发，拷贝即用），其次工作区，再次默认（联网下载）。"""
+    for c in (Path(__file__).resolve().parent / "_models", ws / "_scripts" / "_models"):
+        if (c / "fast-bge-small-zh-v1.5").exists():
+            return c
+    return Path(__file__).resolve().parent / "_models"
 
 DDL = """
 CREATE TABLE 文档 (
@@ -154,7 +162,7 @@ def main(ws: Path, embed=True):
         os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
         from fastembed import TextEmbedding
         # 优先用工作区内置模型缓存（_models/），离线可用；缺失时再联网下载
-        local_cache = ws / "_scripts" / "_models"
+        local_cache = resolve_models_dir(ws)
         try:
             model = TextEmbedding(EMBED_MODEL, cache_dir=str(local_cache), local_files_only=True)
         except Exception:
@@ -186,5 +194,21 @@ def main(ws: Path, embed=True):
     conn.close()
 
 
+def derive_db(ws: Path) -> str:
+    """从工作区名提取时间戳生成库名，如 治理工作区-20260613-1530 → kg_gjj_20260613_1530。"""
+    m = re.search(r"(\d{8})(?:[-_]?(\d{4,6}))?", ws.name)
+    if m:
+        return "kg_gjj_" + m.group(1) + ("_" + m.group(2) if m.group(2) else "")
+    return DB_NAME
+
+
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), embed="--no-embed" not in sys.argv)
+    argv = sys.argv
+    pos = [a for a in argv[1:] if not a.startswith("--")]
+    ws = Path(pos[0])
+    if "--db" in argv:
+        DB_NAME = argv[argv.index("--db") + 1]          # 显式指定库名（覆盖模块全局）
+    else:
+        DB_NAME = derive_db(ws)                          # 默认从工作区时间戳推导
+    print(f"目标数据库: {DB_NAME}（本次独立库，与既有库隔离）")
+    main(ws, embed="--no-embed" not in argv)

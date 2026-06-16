@@ -178,5 +178,21 @@ def main(ws: Path):
     sess.release(); pool.close()
 
 
+def derive_space(ws: Path) -> str:
+    """从工作区名提取时间戳生成图空间名，与 load_pg 同源，便于对照。"""
+    m = re.search(r"(\d{8})(?:[-_]?(\d{4,6}))?", ws.name)
+    if m:
+        return "kg_gjj_" + m.group(1) + ("_" + m.group(2) if m.group(2) else "")
+    return SPACE
+
+
 if __name__ == "__main__":
-    main(Path(sys.argv[1]))
+    argv = sys.argv
+    pos = [a for a in argv[1:] if not a.startswith("--")]
+    ws = Path(pos[0])
+    if "--space" in argv:
+        SPACE = argv[argv.index("--space") + 1]
+    else:
+        SPACE = derive_space(ws)
+    print(f"目标图空间: {SPACE}（本次独立空间，与既有空间隔离）")
+    main(ws)

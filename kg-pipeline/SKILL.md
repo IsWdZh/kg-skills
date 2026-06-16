@@ -14,11 +14,12 @@ description: 分层知识治理流程总控。当用户要对一批业务文档�
 ## 启动流程
 
 1. **确认输入**：源文档目录（按来源/地区分子文件夹）、业务域名称、治理工作区位置（默认在项目根目录建 `治理工作区/`）。
-2. **创建工作区**：按 [references/data-model.md](references/data-model.md) 建目录结构，并把该文件复制为 `治理工作区/README-数据规范.md`（替换业务域示例码）。
+2. **创建工作区**：按 [references/data-model.md](references/data-model.md) 建目录结构，并把该文件复制为 `<工作区>/README-数据规范.md`（替换业务域示例码）。每次独立运行（演示/多批次）用带时间戳的工作区名（如 `治理工作区-YYYYMMDD-HHMM/`）；load_pg/load_nebula 会据此把数据库投影命名为 `kg_gjj_<时间戳>`，与其它批次彻底隔离。
 3. **判断当前阶段**（断点续跑的关键）：
 
 | 检查（按序） | 存在且完整 → 已过该阶段 |
 |---|---|
+| `00-原始MD/转换清单.md` | kg-normalize（第 0 环节：统一转 md） |
 | `00-文档台账/台账.md` | kg-intake |
 | `20-打标结果/文档级打标.md` | kg-tagging |
 | `30-业务图与场景/单元场景目录.md`（状态=已确认） | kg-scenario-map |

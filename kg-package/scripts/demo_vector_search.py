@@ -9,6 +9,14 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+
+def resolve_models_dir(ws):
+    """优先用脚本旁内置的嵌入模型缓存（随技能分发，拷贝即用），其次工作区。"""
+    for c in (Path(__file__).resolve().parent / "_models", ws / "_scripts" / "_models"):
+        if (c / "fast-bge-small-zh-v1.5").exists():
+            return c
+    return Path(__file__).resolve().parent / "_models"
+
 PG = dict(host="192.168.108.155", port=5432, user="pgsql", password="Jczh@2026",
           dbname="kg_gjj_trial")
 EMBED_MODEL = "BAAI/bge-small-zh-v1.5"
@@ -17,7 +25,7 @@ EMBED_MODEL = "BAAI/bge-small-zh-v1.5"
 def main(ws: Path, question: str):
     import psycopg2
     from fastembed import TextEmbedding
-    model = TextEmbedding(EMBED_MODEL, cache_dir=str(ws / "_scripts" / "_models"),
+    model = TextEmbedding(EMBED_MODEL, cache_dir=str(resolve_models_dir(ws)),
                           local_files_only=True)
     vec = list(map(float, list(model.embed([question]))[0]))
     conn = psycopg2.connect(**PG)
