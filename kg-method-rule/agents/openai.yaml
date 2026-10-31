@@ -1,0 +1,4 @@
+interface:
+  display_name: "方法规则"
+  short_description: "治理领域方法、校验规则、引导问题与知识响应模板"
+  default_prompt: "使用 $kg-method-rule 建立可版本化的方法和校验规则资产。"

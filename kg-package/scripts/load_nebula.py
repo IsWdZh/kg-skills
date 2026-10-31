@@ -7,19 +7,25 @@
 - 只有"单实体→单实体"的关系才建直接边；含 AND/OR、多实体联合（如 E05+E07）的
   复合表达式建为"关系陈述"节点，经 involves 边挂到所涉实体，不伪造实体边；
 - 规则（IF/THEN/EXCEPT）建为规则节点，经 based_on 边回链知识块，知识块经
-  from_doc 边回链文档——支撑"政策变更影响分析"反向查询；
-- 使用独立图空间 kg_gjj_trial，不触碰服务器上既有空间；
+  from_doc 边回链文档——支撑"知识变更影响分析"反向查询；
+- 使用由工作区配置、命令行或环境变量确定的独立图空间，不触碰既有空间；
 - NebulaGraph 标识符仅支持 ASCII，故 Tag/Edge/属性名用英文，值为中文。
   映射：entity=实体 rule=规则 rel_stmt=关系陈述 chunk=知识块 doc=文档；
        direct_rel=直接关系 involves=涉及 based_on=依据 from_doc=来源于
 """
-import sys, json, re, time
+import sys, json, re, time, os
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-NEBULA = dict(host="192.168.108.155", port=9669, user="root", password="root")
-SPACE = "kg_gjj_trial"
+# 连接参数：优先读环境变量，缺省回退到内置默认值（换环境只需设环境变量，无需改代码）
+NEBULA = dict(
+    host=os.getenv("KG_NEBULA_HOST", "127.0.0.1"),
+    port=int(os.getenv("KG_NEBULA_PORT", "9669")),
+    user=os.getenv("KG_NEBULA_USER", "root"),
+    password=os.getenv("KG_NEBULA_PASSWORD", "root"),
+)
+SPACE = os.getenv("KG_NEBULA_SPACE", "")
 
 SCHEMA = [
     "CREATE TAG IF NOT EXISTS entity(name string, type string, scene string, region string, version string, wiki_anchor string)",
@@ -170,20 +176,28 @@ def main(ws: Path):
                     ("chunk", "知识块"), ("doc", "文档")]:
         rs = run(sess, f"LOOKUP ON {tag} YIELD id(vertex) | YIELD COUNT(*)")
         print(f"{cn}({tag}): {rs.rows()[0].values[0].get_iVal()}")
-    print("\n影响分析示例：JYG-001（2022新政）变更会波及——")
-    rs = run(sess, 'GO FROM "JYG-001" OVER from_doc REVERSELY YIELD src(edge) AS kc'
-                   ' | GO FROM $-.kc OVER based_on REVERSELY YIELD DISTINCT src(edge) AS 上游')
-    for row in rs.rows():
-        print("  ", row.values[0].get_sVal().decode())
+    if docs:
+        sample_doc = esc(docs[0]["编号"])
+        print(f"\n影响分析抽样：{sample_doc} 变更会波及——")
+        rs = run(sess, f'GO FROM "{sample_doc}" OVER from_doc REVERSELY YIELD src(edge) AS kc'
+                       ' | GO FROM $-.kc OVER based_on REVERSELY YIELD DISTINCT src(edge) AS 上游')
+        for row in rs.rows():
+            print("  ", row.values[0].get_sVal().decode())
     sess.release(); pool.close()
 
 
 def derive_space(ws: Path) -> str:
     """从工作区名提取时间戳生成图空间名，与 load_pg 同源，便于对照。"""
+    raw = os.getenv("KG_PROJECTION_PREFIX", "")
+    config = ws / "治理参数.json"
+    if not raw and config.exists():
+        data = json.loads(config.read_text(encoding="utf-8"))
+        raw = data.get("projection_prefix") or data.get("domain_code") or ""
+    raw = re.sub(r"[^a-z0-9_]+", "_", raw.lower()).strip("_")
+    prefix = raw if raw == "kg" or raw.startswith("kg_") else (f"kg_{raw}" if raw else "kg")
     m = re.search(r"(\d{8})(?:[-_]?(\d{4,6}))?", ws.name)
-    if m:
-        return "kg_gjj_" + m.group(1) + ("_" + m.group(2) if m.group(2) else "")
-    return SPACE
+    suffix = m.group(1) + ("_" + m.group(2) if m and m.group(2) else "") if m else "trial"
+    return f"{prefix[:40].rstrip('_')}_{suffix}"
 
 
 if __name__ == "__main__":
@@ -192,6 +206,8 @@ if __name__ == "__main__":
     ws = Path(pos[0])
     if "--space" in argv:
         SPACE = argv[argv.index("--space") + 1]
+    elif os.getenv("KG_NEBULA_SPACE"):
+        SPACE = os.environ["KG_NEBULA_SPACE"]
     else:
         SPACE = derive_space(ws)
     print(f"目标图空间: {SPACE}（本次独立空间，与既有空间隔离）")

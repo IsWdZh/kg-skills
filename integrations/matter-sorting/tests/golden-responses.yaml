@@ -1,0 +1,21 @@
+tests:
+  - name: matter-retrieval-is-read-only
+    application: matter-sorting
+    response: examples/retrieve-response.json
+    assert_equals:
+      status: ok
+  - name: matter-recommendation-remains-suggestion
+    application: matter-sorting
+    response: examples/recommendation-response.json
+    assert_equals:
+      status: ok
+  - name: verification-is-read-only
+    application: matter-sorting
+    response: examples/verify-response.json
+    assert_equals:
+      read_only: true
+  - name: generic-policy-research-uses-same-contract
+    application: policy-research
+    response: examples/policy-research-response.json
+    assert_equals:
+      status: ok

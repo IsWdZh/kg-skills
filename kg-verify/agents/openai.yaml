@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识校验"
+  short_description: "只读校验外部对象的来源、内容、关系与跨成果一致性"
+  default_prompt: "使用 $kg-verify 对外部业务对象快照执行只读知识校验。"

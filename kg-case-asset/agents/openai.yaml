@@ -1,0 +1,4 @@
+interface:
+  display_name: "案例资产"
+  short_description: "将已确认成果治理为可比较、可复用的经验案例资产"
+  default_prompt: "使用 $kg-case-asset 将已审核项目成果治理为案例资产。"

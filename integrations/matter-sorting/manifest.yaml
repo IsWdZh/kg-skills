@@ -1,0 +1,20 @@
+integration_id: matter-sorting
+version: 1.0.0
+caller_type: external-business-application
+generic_core: true
+business_master_source: matter-sorting-tool
+knowledge_master_source: document-knowledge-platform
+services:
+  - document-intake
+  - context-retrieve
+  - evidence-pack
+  - recommend
+  - verify
+  - feedback
+  - impact-notify
+forbidden_capabilities:
+  - business-object-crud
+  - workflow-transition
+  - approval
+  - auto-writeback
+  - report-render

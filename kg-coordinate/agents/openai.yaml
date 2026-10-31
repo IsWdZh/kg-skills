@@ -1,0 +1,4 @@
+interface:
+  display_name: "协同校验"
+  short_description: "校验证据、知识、案例、方法规则及主数据边界"
+  default_prompt: "使用 $kg-coordinate 校验待发布知识资产。"

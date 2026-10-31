@@ -1,0 +1,4 @@
+interface:
+  display_name: "治理配置"
+  short_description: "配置知识资产组合、服务策略、任务与增量切换"
+  default_prompt: "使用 $kg-govern-config 选择治理方式并生成任务。"

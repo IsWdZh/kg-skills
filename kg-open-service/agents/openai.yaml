@@ -1,0 +1,4 @@
+interface:
+  display_name: "开放服务"
+  short_description: "治理知识服务契约、鉴权、审计、版本与错误降级"
+  default_prompt: "使用 $kg-open-service 定义并检查通用知识服务接口。"

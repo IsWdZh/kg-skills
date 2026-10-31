@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识服务"
+  short_description: "路由问答、证据、推荐、校验并强制引用与降级"
+  default_prompt: "使用 $kg-serve 基于已发布知识包提供可信服务。"

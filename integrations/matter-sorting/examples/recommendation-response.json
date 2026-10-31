@@ -1,0 +1,22 @@
+{
+  "request_id": "REQ-002",
+  "correlation_id": "CORR-002",
+  "knowledge_version": "v1.0",
+  "status": "ok",
+  "candidates": [{
+    "candidate_id": "CAND-001",
+    "content": "建议将该职责拆分为受理和监督两个候选业务单元",
+    "candidate_status": "suggestion",
+    "confidence": 0.78,
+    "evidence_refs": ["EV-SC-001-p001"],
+    "knowledge_roles": ["有效依据", "方法规范"],
+    "applicable_conditions": ["职责文本同时包含办理与监督动作"],
+    "differences": ["需结合本单位处室分工确认"],
+    "risks": ["可能与现有业务树边界重叠"],
+    "prerequisites": ["补充处室职责访谈"],
+    "cross_domain_refs": [],
+    "adaptation_required": false
+  }],
+  "questions": ["办理与监督是否由不同处室承担？"],
+  "gaps": []
+}

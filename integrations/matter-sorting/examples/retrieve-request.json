@@ -1,0 +1,20 @@
+{
+  "request_id": "REQ-001",
+  "correlation_id": "CORR-001",
+  "caller": "matter-sorting",
+  "api_version": "1.0",
+  "query": "该单位核心业务有哪些职责依据",
+  "external_object_id": "ORG-BIZ-001",
+  "knowledge_version": "v1.0",
+  "top_k": 5,
+  "caller_context": {
+    "user_id": "user-1",
+    "organization_id": "org-1",
+    "project_id": "project-1",
+    "region": "四川",
+    "roles": ["implementer"],
+    "classification": "内部",
+    "allowed_access_scopes": ["公开", "内部"],
+    "at_time": "2026-06-30"
+  }
+}

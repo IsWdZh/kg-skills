@@ -1,0 +1,4 @@
+interface:
+  display_name: "成果回流"
+  short_description: "接收已确认成果与采纳反馈并创建受控案例治理任务"
+  default_prompt: "使用 $kg-feedback 安全接收已确认成果并启动案例治理。"

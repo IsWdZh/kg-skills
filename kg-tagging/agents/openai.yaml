@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识打标"
+  short_description: "按主题、内容单元、知识角色与适用维度进行打标"
+  default_prompt: "使用 $kg-tagging 对接入文档执行多维知识打标。"

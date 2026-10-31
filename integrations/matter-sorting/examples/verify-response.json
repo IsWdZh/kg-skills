@@ -1,0 +1,9 @@
+{
+  "request_id": "REQ-003",
+  "correlation_id": "CORR-003",
+  "business_version": "biz-v3",
+  "rule_set_version": "1.0.0",
+  "read_only": true,
+  "summary": {"blocker": 0, "warning": 1, "suggestion": 0},
+  "findings": [{"finding_id": "F-REL-001-PROBLEM-001", "rule_id": "REL-001", "object_id": "PROBLEM-001", "severity": "warning", "message": "缺少响应路径", "evidence": [], "repair_advice": "关联需求、改革或其他响应", "decision_owner": "external_business_owner"}]
+}

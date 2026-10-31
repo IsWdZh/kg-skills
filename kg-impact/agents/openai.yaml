@@ -1,0 +1,4 @@
+interface:
+  display_name: "影响分析"
+  short_description: "分析知识版本变化并通知需要重新核验的外部对象"
+  default_prompt: "使用 $kg-impact 识别知识更新影响并生成通知。"

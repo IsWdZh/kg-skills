@@ -1,0 +1,13 @@
+tests:
+  - name: evidence-response-schema
+    payload: examples/retrieve-response.json
+    schema: response-schemas/evidence.schema.json
+  - name: recommendation-response-schema
+    payload: examples/recommendation-response.json
+    schema: response-schemas/recommendation.schema.json
+  - name: finding-response-schema
+    payload: examples/verify-response.json
+    schema: response-schemas/finding.schema.json
+  - name: policy-research-response-schema
+    payload: examples/policy-research-response.json
+    schema: response-schemas/evidence.schema.json

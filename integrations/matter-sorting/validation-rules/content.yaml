@@ -1,0 +1,18 @@
+version: 1.0.0
+rules:
+  - id: CNT-001
+    type: required
+    object_type: business_item
+    path: fields.name
+    severity: blocker
+    applicability: all business items
+    exceptions: []
+    repair_advice: 在事项工具中补充名称
+  - id: CNT-002
+    type: semantic_review
+    object_type: business_item
+    severity: warning
+    prompt: 检查名称是否为明确动宾结构、颗粒度是否一致、是否存在病句
+    applicability: all business items
+    exceptions: [statutory fixed term]
+    repair_advice: 结合职责依据和同级对象修订

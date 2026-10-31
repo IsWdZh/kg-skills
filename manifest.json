@@ -1,23 +1,41 @@
 {
   "name": "kg-skills",
-  "version": "1.1.0",
-  "schema_version": "2026-06-11",
+  "version": "2.0.0",
+  "schema_version": "2026-06-30",
   "skills": [
     "kg-pipeline",
+    "kg-normalize",
     "kg-intake",
     "kg-tagging",
     "kg-scenario-map",
     "kg-govern-config",
+    "kg-evidence-govern",
+    "kg-method-rule",
+    "kg-case-asset",
     "kg-produce",
     "kg-coordinate",
     "kg-package",
-    "kg-serve"
+    "kg-serve",
+    "kg-context-retrieve",
+    "kg-recommend",
+    "kg-verify",
+    "kg-feedback",
+    "kg-impact",
+    "kg-open-service",
+    "kg-service-harness"
   ],
   "storage_contract": {
-    "governance_source": "Markdown",
-    "release_source": "immutable versioned Markdown snapshot with SHA-256",
+    "governance_source": "original files plus versioned Markdown/JSON governance assets",
+    "release_source": "immutable versioned knowledge and case snapshots with SHA-256",
     "exchange": "JSONL",
     "projections": ["SQLite", "Neo4j Cypher", "PostgreSQL/pgvector optional"]
   },
+  "ownership_contract": {
+    "knowledge_master": "document knowledge platform",
+    "external_business_master": "calling application",
+    "recommendation_mode": "suggestion-only",
+    "verification_mode": "read-only"
+  },
+  "integrations": ["integrations/matter-sorting"],
   "python": ">=3.9"
 }

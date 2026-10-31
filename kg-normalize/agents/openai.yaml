@@ -1,0 +1,4 @@
+interface:
+  display_name: "多模态归一"
+  short_description: "保留原件并生成文本、视觉快照与结构化对象表达"
+  default_prompt: "使用 $kg-normalize 归一这批多格式原始文档。"

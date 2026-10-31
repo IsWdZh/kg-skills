@@ -1,0 +1,20 @@
+version: 1.0.0
+rules:
+  - id: REL-001
+    type: relation_exists
+    object_type: problem
+    relation: responded_by
+    direction: out
+    severity: warning
+    applicability: confirmed problems
+    exceptions: [non-digital measure recorded]
+    repair_advice: 关联需求、改革或其他明确响应路径
+  - id: REL-002
+    type: relation_exists
+    object_type: application_capability
+    relation: supports
+    direction: out
+    severity: warning
+    applicability: planned capabilities
+    exceptions: [shared platform capability with separate evidence]
+    repair_advice: 补充所支撑的流程节点、事件或业务目标

@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识建议"
+  short_description: "基于证据、案例与方法生成带来源且不越权的候选建议"
+  default_prompt: "使用 $kg-recommend 生成不覆盖业务主数据的知识候选建议。"

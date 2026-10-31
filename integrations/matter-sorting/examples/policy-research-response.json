@@ -1,0 +1,11 @@
+{
+  "request_id": "REQ-POLICY-001",
+  "correlation_id": "CORR-POLICY-001",
+  "status": "ok",
+  "knowledge_version": "v1.0",
+  "external_object_id": "REPORT-SECTION-01",
+  "evidence": {"valid_evidence": [], "upper_constraints": [], "current_facts": [], "practice_experience": [], "methods": [], "other": [], "cross_domain_reference": []},
+  "conflicts": [],
+  "gaps": ["示例夹具不包含真实政策内容"],
+  "trace": {"selected_count": 0, "filtered": {}}
+}

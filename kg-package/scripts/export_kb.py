@@ -147,8 +147,11 @@ def parse_documents(workspace: Path) -> list[dict]:
                 "发布时间": meta_value(meta, "发布时间", "publish_date", "未知"),
                 "生效时间": meta_value(meta, "生效时间", "effective_date", "未知"),
                 "源文件": meta_value(meta, "源文件", "source_file"),
-                "来源URL": meta_value(meta, "来源URL", "source_url", "未知"),
-                "权限范围": meta_value(meta, "权限范围", "access_scope", "未指定"),
+                "来源URL": meta.get("来源网址") or meta_value(meta, "来源URL", "source_url", "未知"),
+                "权限范围": meta.get("访问范围") or meta_value(meta, "权限范围", "access_scope", "未指定"),
+                "密级": meta_value(meta, "密级", "classification", "未知"),
+                "知识角色": meta_value(meta, "知识角色", "knowledge_role", "待确认"),
+                "来源权威级别": meta_value(meta, "来源权威级别", "authority_level", "待确认"),
                 "内容哈希": meta_value(meta, "内容哈希", "content_hash"),
                 "完整性": meta_value(meta, "完整性", "completeness"),
                 "解析文件": str(path.relative_to(workspace)).replace("\\", "/"),
@@ -290,7 +293,9 @@ def parse_common_knowledge(workspace: Path) -> list[dict]:
         return []
     text = path.read_text(encoding="utf-8")
     output = []
-    for asset_id, title, fields in section_fields(text, r"^##[ \t]+(GJJ-CK-\d+)(?:[ \t]+(.*))?$"):
+    for asset_id, title, fields in section_fields(
+        text, r"^##[ \t]+(CK-[A-Z0-9][A-Z0-9_-]*-\d{3})(?:[ \t]+(.*))?$"
+    ):
         source = fields.get("来源", "")
         output.append(
             {
@@ -306,6 +311,53 @@ def parse_common_knowledge(workspace: Path) -> list[dict]:
     return output
 
 
+def parse_jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    rows = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            rows.append({"_parse_error": f"line {number}: {exc}"})
+    return rows
+
+
+def parse_case_assets(workspace: Path) -> list[dict]:
+    rows = []
+    root = workspace / "50-知识资产" / "_案例"
+    if not root.exists():
+        return rows
+    for path in sorted(root.rglob("案例清单.json")):
+        try:
+            row = json.loads(path.read_text(encoding="utf-8"))
+            row["资产路径"] = str(path.relative_to(workspace)).replace("\\", "/")
+            row["资产SHA256"] = sha256(path)
+            rows.append(row)
+        except json.JSONDecodeError:
+            rows.append({"资产路径": str(path.relative_to(workspace)).replace("\\", "/"), "_parse_error": "invalid JSON"})
+    return rows
+
+
+def parse_method_assets(workspace: Path) -> list[dict]:
+    rows = []
+    root = workspace / "50-知识资产" / "_方法规则"
+    if not root.exists():
+        return rows
+    try:
+        import yaml
+    except ImportError:
+        return [{"_parse_error": "PyYAML unavailable", "资产路径": str(root)}]
+    for path in sorted(root.rglob("manifest.yaml")):
+        row = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        row["资产路径"] = str(path.relative_to(workspace)).replace("\\", "/")
+        row["资产SHA256"] = sha256(path)
+        rows.append(row)
+    return rows
+
+
 def collect(workspace: Path) -> tuple[dict[str, list[dict]], list[str], list[str]]:
     data: dict[str, list[dict]] = {
         "文档": parse_documents(workspace),
@@ -317,6 +369,10 @@ def collect(workspace: Path) -> tuple[dict[str, list[dict]], list[str], list[str
         "图谱关系": [],
         "图谱规则": [],
         "共性知识": parse_common_knowledge(workspace),
+        "证据卡": parse_jsonl(workspace / "50-知识资产" / "_证据" / "证据卡.jsonl"),
+        "案例资产": parse_case_assets(workspace),
+        "方法规则": parse_method_assets(workspace),
+        "外部对象映射": parse_jsonl(workspace / "70-服务运行" / "外部对象映射.jsonl"),
         "发布记录": parse_release_records(workspace),
     }
     errors: list[str] = []
@@ -373,7 +429,7 @@ def collect(workspace: Path) -> tuple[dict[str, list[dict]], list[str], list[str
 
     chunk_ids = {row["编号"] for row in data["知识块"]}
     for row in data["知识块"]:
-        if not row["内容"] or (not row["来源锚点"] and "GJJ-CK-" not in row["来源原文"]):
+        if not row["内容"] or (not row["来源锚点"] and not re.search(r"\bCK-[A-Z0-9]", row["来源原文"])):
             errors.append(f"{row['编号']}: 知识块缺内容或可追溯来源")
     for row in data["问答对"]:
         if not row["标准问"] or not row["标准答案"]:
@@ -391,6 +447,11 @@ def collect(workspace: Path) -> tuple[dict[str, list[dict]], list[str], list[str
         warnings.append(f"{missing_urls} 份文档缺来源URL，无法自动复查网页现行状态")
     if missing_access:
         warnings.append(f"{missing_access} 份文档缺权限范围，尚不能执行分权检索")
+    for row in data["证据卡"]:
+        if row.get("_parse_error"):
+            errors.append(f"证据卡解析失败: {row['_parse_error']}")
+        elif not row.get("source_locator") or not row.get("knowledge_role"):
+            errors.append(f"{row.get('evidence_id', 'unknown')}: 证据卡缺定位器或知识角色")
     pending = (workspace / "20-打标结果" / "待人工确认清单.md").read_text(encoding="utf-8")
     pending_count = len(re.findall(r"\|\s*待确认\s*\|", pending))
     if pending_count:
@@ -423,8 +484,21 @@ def build_sqlite(path: Path, data: dict[str, list[dict]], warnings: list[str]) -
         CREATE TABLE "文档" (
           "编号" TEXT PRIMARY KEY, "标题" TEXT, "地区" TEXT, "发布机构" TEXT,
           "文档类型" TEXT, "发布时间" TEXT, "生效时间" TEXT, "源文件" TEXT,
-          "来源URL" TEXT, "权限范围" TEXT, "内容哈希" TEXT, "完整性" TEXT,
+          "来源URL" TEXT, "权限范围" TEXT, "密级" TEXT, "知识角色" TEXT,
+          "来源权威级别" TEXT, "内容哈希" TEXT, "完整性" TEXT,
           "解析文件" TEXT, "解析文件SHA256" TEXT NOT NULL
+        );
+        CREATE TABLE "证据卡" (
+          "证据ID" TEXT PRIMARY KEY, "文档ID" TEXT, "内容" TEXT, "知识角色" TEXT,
+          "地区" TEXT, "访问范围" TEXT, "定位器JSON" TEXT, "载荷JSON" TEXT NOT NULL
+        );
+        CREATE TABLE "案例资产" (
+          "案例ID" TEXT PRIMARY KEY, "标题" TEXT, "版本" TEXT, "地区" TEXT,
+          "行业" TEXT, "访问范围" TEXT, "载荷JSON" TEXT NOT NULL
+        );
+        CREATE TABLE "方法规则" (
+          "资产ID" TEXT PRIMARY KEY, "资产类型" TEXT, "版本" TEXT,
+          "适用任务JSON" TEXT, "载荷JSON" TEXT NOT NULL
         );
         CREATE TABLE "知识包" (
           "包ID" TEXT PRIMARY KEY, "场景编码" TEXT NOT NULL, "地区码" TEXT NOT NULL,
@@ -485,8 +559,25 @@ def build_sqlite(path: Path, data: dict[str, list[dict]], warnings: list[str]) -
         """
     )
     db.executemany('INSERT INTO "元数据" VALUES (?, ?)', [("生成日期", date.today().isoformat()), ("事实源", "冻结 Markdown 知识包快照")])
-    doc_cols = ["编号", "标题", "地区", "发布机构", "文档类型", "发布时间", "生效时间", "源文件", "来源URL", "权限范围", "内容哈希", "完整性", "解析文件", "解析文件SHA256"]
+    doc_cols = ["编号", "标题", "地区", "发布机构", "文档类型", "发布时间", "生效时间", "源文件", "来源URL", "权限范围", "密级", "知识角色", "来源权威级别", "内容哈希", "完整性", "解析文件", "解析文件SHA256"]
     db.executemany(f'INSERT INTO "文档" VALUES ({",".join("?" for _ in doc_cols)})', [[row.get(col, "") for col in doc_cols] for row in data["文档"]])
+    for row in data["证据卡"]:
+        if row.get("_parse_error"):
+            continue
+        db.execute('INSERT INTO "证据卡" VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (
+            row.get("evidence_id"), row.get("document_id"), row.get("content"), row.get("knowledge_role"),
+            row.get("region"), row.get("access_scope"), json_text(row.get("source_locator", {})), json_text(row)))
+    for row in data["案例资产"]:
+        if row.get("_parse_error"):
+            continue
+        db.execute('INSERT INTO "案例资产" VALUES (?, ?, ?, ?, ?, ?, ?)', (
+            row.get("case_id"), row.get("title"), row.get("version"), row.get("region"),
+            row.get("industry"), row.get("access_scope"), json_text(row)))
+    for row in data["方法规则"]:
+        if row.get("_parse_error"):
+            continue
+        db.execute('INSERT INTO "方法规则" VALUES (?, ?, ?, ?, ?)', (
+            row.get("asset_id"), row.get("asset_type"), row.get("version"), json_text(row.get("applicable_tasks", [])), json_text(row)))
     package_cols = ["包ID", "场景编码", "地区码", "版本", "发布动作", "发布状态", "治理档位", "时效基准", "包清单", "包清单SHA256"]
     db.executemany(f'INSERT INTO "知识包" VALUES ({",".join("?" for _ in package_cols)})', [[row.get(col, "") for col in package_cols] for row in data["知识包"]])
     for row in data["知识块"]:
@@ -520,6 +611,9 @@ def build_sqlite(path: Path, data: dict[str, list[dict]], warnings: list[str]) -
     search_rows.extend((row["编号"], "问答对", row["场景编码"], row["地区码"], row["标准问"], row["标准答案"]) for row in data["问答对"])
     search_rows.extend((row["编号"], "Wiki", row["场景编码"], row["地区码"], row["标题"], row["内容"]) for row in data["Wiki页"])
     search_rows.extend((row["编号"], "共性知识", "", "", row["名称"], row["内容"]) for row in data["共性知识"])
+    search_rows.extend((row.get("evidence_id"), "证据", "", row.get("region", ""), row.get("document_title", ""), row.get("content", "")) for row in data["证据卡"] if not row.get("_parse_error"))
+    search_rows.extend((row.get("case_id"), "案例", "", row.get("region", ""), row.get("title", ""), json_text(row.get("reuse_units", []))) for row in data["案例资产"] if not row.get("_parse_error"))
+    search_rows.extend((row.get("asset_id"), "方法规则", "", "", row.get("asset_type", ""), json_text(row)) for row in data["方法规则"] if not row.get("_parse_error"))
     db.executemany('INSERT INTO "知识检索" VALUES (?, ?, ?, ?, ?, ?)', search_rows)
     db.commit()
     db.close()

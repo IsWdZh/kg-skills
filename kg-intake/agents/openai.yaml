@@ -1,0 +1,4 @@
+interface:
+  display_name: "文档接入"
+  short_description: "登记文档来源、版本、权限时效与多类型定位器"
+  default_prompt: "使用 $kg-intake 接入归一后的文档并建立台账。"

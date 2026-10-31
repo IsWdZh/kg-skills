@@ -7,7 +7,7 @@
 
 约定（与《知识资产存储规范化设计》一致）:
 - 数据库为可重建投影：脚本幂等，重跑=清空重建（DROP SCHEMA 后重建），事实源永远是冻结知识包；
-- 使用独立数据库 kg_gjj_trial，不触碰服务器上既有库（ai/nacos/ontology_db）；
+- 使用由工作区配置、命令行或环境变量确定的独立数据库，不触碰既有库；
 - 表名列名全中文；编码/ID 保留 ASCII。
 """
 import sys, json, os, re
@@ -15,8 +15,14 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-PG = dict(host="192.168.108.155", port=5432, user="pgsql", password="Jczh@2026")
-DB_NAME = "kg_gjj_trial"
+# 连接参数：优先读环境变量，缺省回退到内置默认值（换环境只需设环境变量，无需改代码）
+PG = dict(
+    host=os.getenv("KG_PG_HOST", "127.0.0.1"),
+    port=int(os.getenv("KG_PG_PORT", "5432")),
+    user=os.getenv("KG_PG_USER", "postgres"),
+    password=os.getenv("KG_PG_PASSWORD", ""),
+)
+DB_NAME = os.getenv("KG_PG_DB", "")
 EMBED_MODEL = "BAAI/bge-small-zh-v1.5"   # 512 维
 EMBED_DIM = 512
 
@@ -194,12 +200,25 @@ def main(ws: Path, embed=True):
     conn.close()
 
 
+def projection_prefix(ws: Path) -> str:
+    """读取通用投影前缀；场景缩写只能来自工作区配置或环境变量。"""
+    raw = os.getenv("KG_PROJECTION_PREFIX", "")
+    config = ws / "治理参数.json"
+    if not raw and config.exists():
+        data = json.loads(config.read_text(encoding="utf-8"))
+        raw = data.get("projection_prefix") or data.get("domain_code") or ""
+    raw = re.sub(r"[^a-z0-9_]+", "_", raw.lower()).strip("_")
+    if not raw:
+        return "kg"
+    prefix = raw if raw == "kg" or raw.startswith("kg_") else f"kg_{raw}"
+    return prefix[:40].rstrip("_")
+
+
 def derive_db(ws: Path) -> str:
-    """从工作区名提取时间戳生成库名，如 治理工作区-20260613-1530 → kg_gjj_20260613_1530。"""
+    """按投影前缀和工作区时间戳生成独立数据库名。"""
     m = re.search(r"(\d{8})(?:[-_]?(\d{4,6}))?", ws.name)
-    if m:
-        return "kg_gjj_" + m.group(1) + ("_" + m.group(2) if m.group(2) else "")
-    return DB_NAME
+    suffix = m.group(1) + ("_" + m.group(2) if m and m.group(2) else "") if m else "trial"
+    return f"{projection_prefix(ws)}_{suffix}"
 
 
 if __name__ == "__main__":
@@ -208,6 +227,8 @@ if __name__ == "__main__":
     ws = Path(pos[0])
     if "--db" in argv:
         DB_NAME = argv[argv.index("--db") + 1]          # 显式指定库名（覆盖模块全局）
+    elif os.getenv("KG_PG_DB"):
+        DB_NAME = os.environ["KG_PG_DB"]
     else:
         DB_NAME = derive_db(ws)                          # 默认从工作区时间戳推导
     print(f"目标数据库: {DB_NAME}（本次独立库，与既有库隔离）")

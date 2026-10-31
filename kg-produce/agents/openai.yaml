@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识生产"
+  short_description: "基于证据生产知识块、问答、Wiki、图谱与事实"
+  default_prompt: "使用 $kg-produce 按治理任务生产可信知识资产。"

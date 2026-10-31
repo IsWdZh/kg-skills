@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """向量语义检索：对知识块/问答对/Wiki 三类向量做相似度检索。
 
-用法: python demo_vector_search.py <工作区目录> "你的问题"
-示例: python demo_vector_search.py 治理工作区 "房子写的是我儿子的名字，公积金能取吗"
+用法: python demo_vector_search.py <工作区目录> "你的问题" [--db 数据库名]
+示例: python demo_vector_search.py 治理工作区 "示例政策的适用条件是什么"
 """
-import sys
+import sys, os
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -17,8 +17,13 @@ def resolve_models_dir(ws):
             return c
     return Path(__file__).resolve().parent / "_models"
 
-PG = dict(host="192.168.108.155", port=5432, user="pgsql", password="Jczh@2026",
-          dbname="kg_gjj_trial")
+# 连接参数：优先读环境变量，缺省回退到内置默认值
+PG = dict(
+    host=os.getenv("KG_PG_HOST", "127.0.0.1"),
+    port=int(os.getenv("KG_PG_PORT", "5432")),
+    user=os.getenv("KG_PG_USER", "postgres"),
+    password=os.getenv("KG_PG_PASSWORD", ""),
+)
 EMBED_MODEL = "BAAI/bge-small-zh-v1.5"
 
 
@@ -57,4 +62,13 @@ def main(ws: Path, question: str):
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]), sys.argv[2] if len(sys.argv) > 2 else "退休了公积金怎么提取")
+    ws = Path(sys.argv[1])
+    question = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else "该知识主题有哪些有效依据"
+    if "--db" in sys.argv:
+        PG["dbname"] = sys.argv[sys.argv.index("--db") + 1]
+    elif os.getenv("KG_PG_DB"):
+        PG["dbname"] = os.environ["KG_PG_DB"]
+    else:
+        from load_pg import derive_db
+        PG["dbname"] = derive_db(ws)
+    main(ws, question)

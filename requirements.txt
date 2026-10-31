@@ -11,6 +11,10 @@ lxml
 python-docx
 pypdf
 Pillow
+openpyxl
+python-pptx
+PyMuPDF
+PyYAML
 
 # 图片 OCR（kg-normalize，离线，模型内置）
 rapidocr-onnxruntime

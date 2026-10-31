@@ -4,6 +4,7 @@
 用法: python check_links.py <工作区目录>
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -17,7 +18,7 @@ KC_RE = re.compile(r"KC-(?:[A-Z0-9]+-)+\d{3}(?:/\d{3})*")
 PLACEHOLDER_RE = re.compile(r"(?:KC|QA|RULE|R|E)-?(?:…|\.\.\.)")
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 SRCMAP_ROW_RE = re.compile(r"^\|\s*([A-Z][A-Z0-9]{1,7}-\d{3})\s*\|", re.M)
-CK_REF_RE = re.compile(r"GJJ-CK-\d+")
+CK_REF_RE = re.compile(r"CK-[A-Z0-9][A-Z0-9_-]*-\d{3}")
 
 
 def expand_kc_reference(value: str) -> list[str]:
@@ -39,8 +40,8 @@ def build_ck_sources(ws: Path) -> dict[str, set[str]]:
     ck_sources: dict[str, set[str]] = {}
     for file in (ws / "50-知识资产").rglob("共性知识库.md"):
         text = file.read_text(encoding="utf-8")
-        for section in re.split(r"(?m)(?=^## GJJ-CK-\d+)", text):
-            head = re.match(r"^## (GJJ-CK-\d+)", section)
+        for section in re.split(r"(?m)(?=^## CK-[A-Z0-9][A-Z0-9_-]*-\d{3})", text):
+            head = re.match(r"^## (CK-[A-Z0-9][A-Z0-9_-]*-\d{3})", section)
             if not head:
                 continue
             docs = {m.group(1) for m in ANCHOR_RE.finditer(section)}
@@ -53,7 +54,7 @@ def check_package_source_maps(
 ) -> tuple[list[str], list[str]]:
     """校验每个知识包的「来源文档」映射表是否覆盖全部被引用文档编号。
 
-    含直接锚点引用与所挂接共性知识（GJJ-CK-xx）的底层源文档。
+    含直接锚点引用与所挂接共性知识（CK-*）的底层源文档。
     旧格式包（无映射表）只提示待升级，不计为错误。
     """
     errors: list[str] = []
@@ -116,12 +117,61 @@ def main(ws: Path) -> None:
         chunk_ids.update(re.findall(r"^## (KC-[A-Z0-9-]+)", text, re.M))
     for file in asset_root.rglob("共性知识库.md"):
         text = file.read_text(encoding="utf-8")
-        chunk_ids.update(re.findall(r"^## (GJJ-CK-\d+)", text, re.M))
+        chunk_ids.update(re.findall(r"^## (CK-[A-Z0-9][A-Z0-9_-]*-\d{3})", text, re.M))
 
     errors: list[str] = []
     checked_anchors = 0
     checked_kc = 0
     checked_links = 0
+
+    evidence_path = asset_root / "_证据" / "证据卡.jsonl"
+    if evidence_path.exists():
+        for number, line in enumerate(evidence_path.read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip():
+                continue
+            try:
+                card = json.loads(line)
+            except json.JSONDecodeError as exc:
+                errors.append(f"[证据卡JSON错误] {evidence_path.relative_to(ws)}:{number}: {exc}")
+                continue
+            evidence_id = card.get("evidence_id", f"line-{number}")
+            locator = card.get("source_locator") or {}
+            if not locator.get("anchor") and not any(locator.get(key) for key in ("page", "cell", "image_region", "flow_node")):
+                errors.append(f"[证据定位缺失] {evidence_id}")
+            if locator.get("type") == "paragraph" and locator.get("anchor") not in anchors:
+                errors.append(f"[证据锚点缺失] {evidence_id}: {locator.get('anchor')}")
+            if card.get("knowledge_role") in {None, "", "待确认"}:
+                errors.append(f"[证据角色待确认] {evidence_id}")
+            if card.get("access_scope") in {None, "", "未知"}:
+                errors.append(f"[证据权限待确认] {evidence_id}")
+
+    for path in (sorted((asset_root / "_案例").rglob("案例清单.json")) if (asset_root / "_案例").exists() else []):
+        try:
+            case = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            errors.append(f"[案例JSON错误] {path.relative_to(ws)}: {exc}")
+            continue
+        if case.get("review_status") not in {"已审核", "已发布", "已确认可沉淀"}:
+            errors.append(f"[案例准入失败] {path.relative_to(ws)}: 审核状态不足")
+        for unit in case.get("reuse_units", []):
+            if not unit.get("evidence_refs") or not unit.get("applicable_conditions") or not unit.get("risks"):
+                errors.append(f"[案例复用信息缺失] {path.relative_to(ws)}: {unit.get('unit_id', 'unknown')}")
+
+    method_root = asset_root / "_方法规则"
+    if method_root.exists():
+        try:
+            import yaml
+        except ImportError:
+            errors.append("[方法规则未校验] 缺少 PyYAML")
+        else:
+            forbidden = {"workflow", "stages", "transitions", "approval", "business_status", "auto_writeback"}
+            for path in sorted(method_root.rglob("manifest.yaml")):
+                manifest = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                keys = set(manifest)
+                if forbidden.intersection(keys):
+                    errors.append(f"[方法规则越界] {path.relative_to(ws)}: 含外部业务流程字段")
+                if not all(manifest.get(key) for key in ("asset_id", "asset_type", "version", "sources")):
+                    errors.append(f"[方法规则字段缺失] {path.relative_to(ws)}")
 
     markdown_files = sorted(ws.rglob("*.md"))
     for file in markdown_files:
@@ -174,6 +224,23 @@ def main(ws: Path) -> None:
                 heading = section.splitlines()[0]
                 if not re.search(r"(?m)^- 来源\s*:", section):
                     errors.append(f"[条目缺少来源] {rel}: {heading}")
+
+        # 实体知识块必须含真锚点（编号#pNNN），仅"服务引导/缺口块"可豁免
+        if file.name == "知识块.md":
+            for section in re.split(r"(?m)(?=^## KC-)", text):
+                if not section.startswith("## KC-"):
+                    continue
+                heading = section.splitlines()[0]
+                typ_match = re.search(r"(?m)^- 类型\s*[:：]\s*(.+)$", section)
+                typ = typ_match.group(1).strip() if typ_match else ""
+                if "服务引导" in typ:
+                    continue
+                if not ANCHOR_RE.search(section):
+                    errors.append(
+                        f"[知识块缺锚点] {rel}: {heading}"
+                        f"（类型={typ or '未标'}，实体知识块须含 编号#pNNN 来源锚点，"
+                        "仅服务引导/缺口块可豁免）"
+                    )
 
         if file.name == "知识图谱.md":
             for section in re.split(r"(?m)(?=^### RULE-)", text):

@@ -1,0 +1,13 @@
+version: 1.0.0
+errors:
+  KG-400-INVALID: 请求字段或版本无效
+  KG-401-UNAUTHENTICATED: 调用方身份无效
+  KG-403-FORBIDDEN: 无权访问目标知识
+  KG-404-NOT-FOUND: 未找到可用知识或外部映射
+  KG-409-VERSION-CONFLICT: 幂等键或版本冲突
+  KG-422-INSUFFICIENT-EVIDENCE: 证据不足，仅可返回待确认建议
+  KG-429-RATE-LIMITED: 超出调用额度
+  KG-503-DEGRADED: 语义模型不可用，已降级为确定性服务
+security:
+  hide_resource_existence_on_forbidden: true
+  include_sensitive_debug_details: false

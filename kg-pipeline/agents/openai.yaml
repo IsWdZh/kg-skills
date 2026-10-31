@@ -1,0 +1,4 @@
+interface:
+  display_name: "知识治理总控"
+  short_description: "总控多模态文档、可信知识、开放服务与反馈影响闭环"
+  default_prompt: "使用 $kg-pipeline 启动或续跑通用文档知识治理。"

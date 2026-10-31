@@ -1,0 +1,19 @@
+{
+  "request_id": "REQ-001",
+  "correlation_id": "CORR-001",
+  "status": "ok",
+  "knowledge_version": "v1.0",
+  "external_object_id": "ORG-BIZ-001",
+  "evidence": {
+    "valid_evidence": [{"evidence_id": "EV-SC-001-p001", "content": "示例职责依据", "knowledge_role": "有效依据", "partition": "适用命中", "source_locator": {"type": "paragraph", "anchor": "SC-001#p001"}}],
+    "upper_constraints": [],
+    "current_facts": [],
+    "practice_experience": [],
+    "methods": [],
+    "other": [],
+    "cross_domain_reference": []
+  },
+  "conflicts": [],
+  "gaps": [],
+  "trace": {"selected_count": 1, "filtered": {"permission": 1}}
+}

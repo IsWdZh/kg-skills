@@ -1,0 +1,4 @@
+interface:
+  display_name: "服务单元拆分"
+  short_description: "建立知识覆盖图并确定可独立治理发布的服务单元"
+  default_prompt: "使用 $kg-scenario-map 拆分知识服务单元并盘点覆盖。"

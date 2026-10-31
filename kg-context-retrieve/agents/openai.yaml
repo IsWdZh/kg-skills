@@ -1,0 +1,4 @@
+interface:
+  display_name: "上下文检索"
+  short_description: "按权限、地区、时效和知识角色检索并组装可信证据"
+  default_prompt: "使用 $kg-context-retrieve 为外部业务上下文检索可信知识。"

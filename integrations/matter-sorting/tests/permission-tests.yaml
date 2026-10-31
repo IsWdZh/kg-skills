@@ -1,0 +1,7 @@
+tests:
+  - name: restricted-evidence-is-not-leaked
+    response: examples/permission-response.json
+    must_not_contain:
+      - SECRET-EVIDENCE-001
+      - 受限文件真实标题
+      - 受限原文内容

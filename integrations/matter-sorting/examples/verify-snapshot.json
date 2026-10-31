@@ -1,0 +1,11 @@
+{
+  "request_id": "REQ-003",
+  "correlation_id": "CORR-003",
+  "business_version": "biz-v3",
+  "objects": [
+    {"id": "ITEM-001", "type": "business_item", "fields": {"name": "办理事项"}},
+    {"id": "PROBLEM-001", "type": "problem", "fields": {"name": "重复提交材料"}}
+  ],
+  "relations": [],
+  "evidence_mappings": [{"object_id": "ITEM-001", "field": "fields.name", "evidence_refs": ["EV-SC-001-p001"]}]
+}

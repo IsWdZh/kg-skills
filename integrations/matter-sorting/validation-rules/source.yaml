@@ -1,0 +1,18 @@
+version: 1.0.0
+rules:
+  - id: SRC-001
+    type: evidence_required
+    object_type: "*"
+    path: fields.name
+    severity: blocker
+    applicability: factual name used in formal output
+    exceptions: [temporary placeholder explicitly marked pending]
+    repair_advice: 补充可定位证据或将内容标为待确认建议
+  - id: SRC-002
+    type: semantic_review
+    object_type: "*"
+    severity: warning
+    prompt: 检查跨适用域知识是否被误写成目标域确定性事实
+    applicability: object references cross-domain knowledge
+    exceptions: []
+    repair_advice: 移入跨域参考分区并增加适配确认项

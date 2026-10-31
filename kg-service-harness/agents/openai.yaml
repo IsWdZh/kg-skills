@@ -1,0 +1,4 @@
+interface:
+  display_name: "服务试跑"
+  short_description: "模拟上层应用调用并执行契约、权限与黄金用例测试"
+  default_prompt: "使用 $kg-service-harness 运行知识服务集成契约试跑。"

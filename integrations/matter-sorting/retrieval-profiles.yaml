@@ -1,0 +1,17 @@
+version: 1.0.0
+profiles:
+  default:
+    filter_order: [permission, classification, project, valid_time]
+    role_order: [有效依据, 上位约束, 现状事实, 历史材料, 实践经验, 方法规范, 模型建议]
+    partition_by_applicability: true
+    separate_cross_domain_reference: true
+    evidence_required: true
+  case-reference:
+    dimensions: [industry, goal, problem, process_structure, organization_level, maturity]
+    require_applicability: true
+    require_differences: true
+  policy-research:
+    filter_order: [permission, classification, valid_time]
+    role_order: [有效依据, 上位约束, 方法规范, 实践经验]
+    partition_by_applicability: true
+    separate_cross_domain_reference: true

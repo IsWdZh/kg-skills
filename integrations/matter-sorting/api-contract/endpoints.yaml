@@ -1,0 +1,52 @@
+version: 1.0.0
+common_required: [request_id, correlation_id, caller, caller_context, api_version]
+endpoints:
+  - name: document-intake
+    method: POST
+    path: /v1/documents:intake
+    request_schema: document-intake-request
+    response_schema: document-intake-response
+    auth: user-and-knowledge-scope
+    idempotency: required
+  - name: context-retrieve
+    method: POST
+    path: /v1/knowledge:retrieve
+    request_schema: retrieve-request
+    response_schema: response-schemas/evidence.schema.json
+    auth: pre-retrieval-filter
+    idempotency: optional
+  - name: evidence-pack
+    method: POST
+    path: /v1/evidence:assemble
+    request_schema: evidence-request
+    response_schema: response-schemas/evidence.schema.json
+    auth: pre-retrieval-filter
+    idempotency: optional
+  - name: recommend
+    method: POST
+    path: /v1/knowledge:recommend
+    request_schema: recommendation-request
+    response_schema: response-schemas/recommendation.schema.json
+    auth: pre-retrieval-filter
+    idempotency: optional
+  - name: verify
+    method: POST
+    path: /v1/knowledge:verify
+    request_schema: verification-request
+    response_schema: response-schemas/finding.schema.json
+    auth: object-and-evidence-scope
+    idempotency: optional
+  - name: feedback
+    method: POST
+    path: /v1/knowledge:feedback
+    request_schema: feedback-request
+    response_schema: feedback-response
+    auth: project-contributor
+    idempotency: required
+  - name: impact-notify
+    method: POST
+    path: /v1/knowledge:impact-notify
+    request_schema: impact-event
+    response_schema: impact-ack
+    auth: trusted-system
+    idempotency: required

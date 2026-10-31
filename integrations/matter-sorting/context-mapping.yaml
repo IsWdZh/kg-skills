@@ -1,0 +1,29 @@
+version: 1.0.0
+common_context:
+  required:
+    - caller
+    - user_id
+    - organization_id
+    - project_id
+    - region
+    - roles
+    - classification
+    - allowed_access_scopes
+    - request_id
+    - correlation_id
+  optional:
+    - current_stage
+    - external_object_id
+    - external_object_type
+    - business_version
+mappings:
+  core_business: [knowledge_topic, organization, responsibility, evidence]
+  business_item: [knowledge_topic, process, actor, input, output, evidence]
+  process: [process, node, lane, condition, evidence]
+  requirement: [problem, goal, evidence]
+  scenario: [goal, actor, event, process]
+  reform: [problem, change, expected_outcome, evidence]
+  application: [capability, data, interface, historical_case]
+ownership:
+  external_objects: read-only-snapshot
+  writeback: forbidden
